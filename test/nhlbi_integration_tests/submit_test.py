@@ -61,7 +61,7 @@ def validate_config_exists(config_name):
 
 
 def create_cfg(name, config, noise_config, description, gpu_memory, system_memory,
-               value_threshold, scale_threshold, tags,optional_additional_datasets=[]):
+               value_threshold, scale_threshold, tags,optional_additional_datasets=[],optional_additional_dependency_datasets=[]):
     cfg = configparser.ConfigParser()
 
     cfg['dependency.siemens'] = {
@@ -72,6 +72,16 @@ def create_cfg(name, config, noise_config, description, gpu_memory, system_memor
     cfg['dependency.client'] = {
         'configuration': noise_config,
     }
+    for i in range (len(optional_additional_dependency_datasets)//2):
+        cfg[f'dependency.siemens.{i+1}'] = {
+        'data_file': f'{name}/{op.basename(optional_additional_dependency_datasets[2*i])}',
+        'measurement': '0',
+        'additional_arguments': 'skip_converstion',
+        }
+        cfg[f'dependency.client.{i+1}'] = {
+        'configuration': optional_additional_dependency_datasets[2*i+1],
+    }
+        
     cfg['reconstruction.siemens'] = {
         'data_file': f'{name}/recon_data.h5',
         'measurement': '0',
@@ -138,12 +148,16 @@ def main():
                         help="Skip uploading to Azure (for local-only testing)")
     parser.add_argument('--additional-files',nargs='+',type=str,default=[],
                         help='List of additional files for testing (e.g traj_bSTAR.seq traj_bSTAR.h5)')
+    parser.add_argument('--additional-dependencies',nargs='+',type=str,default=[],
+                        help='List of additional dependency data.h5 .xml data2 .xml2')
 
     args = parser.parse_args()
     print(args)
     print(type(args.additional_files))
     print(len(args.additional_files))
-    
+    print(type(args.additional_dependencies))
+    print(len(args.additional_dependencies))
+    print(args.additional_dependencies)
     # Check if test already exists
     cfg_path = CASES_DIR / f"{args.name}.cfg"
     if cfg_path.exists():
@@ -175,7 +189,21 @@ def main():
         if additional_file.endswith('.h5'):
             if not validate_hdf5(additional_file):
                 sys.exit(1)
-        
+    
+    # Additional dependencies
+    if len(args.additional_dependencies) % 2 !=0 :
+        print(f"Error additional dependencies required data.h5 and config.xml")
+        sys.exit(1)
+    for i in range(len(args.additional_dependencies)//2):
+        dependency_file=args.additional_dependencies[2*i]
+        print(dependency_file)
+        if not op.isfile(dependency_file):
+            print(f"Error: Dependency file not found: {dependency_file}")
+            sys.exit(1)
+        if dependency_file.endswith('.h5'):
+            if not validate_hdf5(dependency_file):
+                sys.exit(1)
+    
     # Compute checksums
     print("Computing checksums...")
     noise_sha256 = calc_sha256(args.noise_file)
@@ -189,7 +217,12 @@ def main():
         additional_files_sha256.append((additional_file, sha256))
         print(f"  Additional file {additional_file} SHA256: {sha256}")
     
-    
+    additional_dependency_file_sha256 = []
+    for i in range(len(args.additional_dependencies)//2):
+        dependency_file=args.additional_dependencies[2*i]
+        sha256 = calc_sha256(dependency_file)
+        additional_dependency_file_sha256.append((dependency_file, sha256))
+        print(f"  Dependency file {dependency_file} SHA256: {sha256}")
     
     # Upload to Azure
     if not args.skip_upload:
@@ -199,6 +232,8 @@ def main():
         upload_blob(container_client, args.data_file, f"{args.name}/recon_data.h5")
         for additional_file, sha256 in additional_files_sha256:
             upload_blob(container_client, additional_file, f"{args.name}/{op.basename(additional_file)}")
+        for additional_dependency_file, sha256 in additional_dependency_file_sha256:
+            upload_blob(container_client, additional_dependency_file, f"{args.name}/{op.basename(additional_dependency_file)}")
     else:
         print("Skipping Azure upload (--skip-upload)")
 
@@ -224,6 +259,16 @@ def main():
             'type': 'additional',
             'test': args.name,
         })
+        
+    for additional_dependency_file, sha256 in additional_dependency_file_sha256:
+        manifest.append({
+            'file': f"{args.name}/{op.basename(additional_dependency_file)}",
+            'sha256': sha256,
+            'type': 'additional',
+            'test': args.name,
+        }) 
+        
+        
     save_manifest(manifest)
     print(f"Updated manifest: {len(manifest)} entries")
 
@@ -239,7 +284,8 @@ def main():
         value_threshold=args.value_threshold,
         scale_threshold=args.scale_threshold,
         tags=args.tags,
-        optional_additional_datasets=args.additional_files
+        optional_additional_datasets=args.additional_files,
+        optional_additional_dependency_datasets=args.additional_dependencies
     )
     print(f"Created test case: {cfg_path}")
     print(f"\nNext step: Run 'python generate_baseline.py --test {args.name}' to create baseline")

@@ -222,6 +222,17 @@ def run_reconstruction(test_name, port, storage_port):
         print("Run 'python get_nhlbi_data.py download --test {}' first.".format(test_name))
         sys.exit(1)
 
+    # additional dependency files 
+    
+    add_dep_sections_number=[dep_sec.split(".")[-1] for dep_sec in config.sections() if "dependency.siemens." in dep_sec]
+
+    for num_dep in add_dep_sections_number:
+        dep_file=os.path.join(data_dir,config[f"dependency.siemens.{num_dep}"]['data_file'])
+        if not os.path.isfile(dep_file):
+            print(f"Error: Recon data file not found: {dep_file}")
+            print("Run 'python get_nhlbi_data.py download --test {}' first.".format(test_name))
+            sys.exit(1)
+    
     output_file = os.path.join(test_dir, 'output.h5')
 
     noise_config = config['dependency.client']['configuration']
@@ -258,6 +269,26 @@ def run_reconstruction(test_name, port, storage_port):
                 # Wait briefly for gadgetron to start
                 time.sleep(2)
 
+                if len(add_dep_sections_number)>0:
+                    print("\n--- Sending additional dependencies ---")
+                    print(add_dep_sections_number)
+                    for num_dep in add_dep_sections_number:
+                        dep_siem=f"dependency.siemens.{num_dep}"
+                        input_dep_file=os.path.join(data_dir,config[f"dependency.siemens.{num_dep}"]['data_file'])
+                        input_config_file=config[f"dependency.client.{num_dep}"]['configuration']
+                        dep_name=f"dep_{num_dep}"
+                        dep_log = open(os.path.join(test_dir, f'{dep_name}.log'), 'w')
+                        print("\n--- Sending dependency {input_dep_file} with config {input_config_file} ---")
+                        send_data_to_gadgetron(
+                            echo_handler, gadgetron_instance,
+                            input=input_dep_file,
+                            output=os.path.join(test_dir, f'{dep_name}_output.h5'),
+                            configuration=['-c', input_config_file],
+                            group=noise_config,
+                            log=dep_log,
+                            additional_arguments=config[f"dependency.siemens.{num_dep}"].get('additional_arguments'),
+                        )
+                        dep_log.close()
                 # Send noise data
                 print(f"\n--- Sending noise data ({noise_config}) ---")
                 noise_log = open(os.path.join(test_dir, 'noise_client.log'), 'w')
@@ -332,12 +363,8 @@ def update_cfg(cfg_path, baseline_file, recon_time):
             }
     config['nhlbi']['baseline_recon_time'] = str(round(recon_time, 1))
     # Sorting keys to ensure deterministic order in the .cfg file
-    desired_order = [
-    'dependency.siemens',
-    'dependency.client',
-    'reconstruction.siemens',
-    'reconstruction.client',
-    ]
+    desired_order = [section_name for section_name in config.sections() if section_name.startswith('dependency')]
+    desired_order.extend(['reconstruction.siemens','reconstruction.client'])
     desired_order.extend([section_name for section_name in config.sections() if section_name.startswith('reconstruction.test')])
     desired_order.extend(['requirements','tags','nhlbi'])
     

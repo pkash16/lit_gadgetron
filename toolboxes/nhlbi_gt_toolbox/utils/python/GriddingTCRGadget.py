@@ -18,7 +18,7 @@ from tcr_utils import *
 from skimage.util import montage
 from skimage.transform import resize
 import ismrmrd as mrd
-
+from utils_function import eprint, parse_params, read_params
 
 
 def pad_center_cupy(arr, new_shape, constant_values=0):
@@ -108,8 +108,8 @@ def send_imri_image(data, mrdHeader,connection,acq_data):
     data = np.flip(data,axis=2) # flip for scanner?
     data = np.around(data)
 
-    print(np.max(np.abs(data)))
-    print(np.min(data))
+    eprint(np.max(np.abs(data)))
+    eprint(np.min(data))
 
     # add logic for over-sampled slices
     #mrdHeader.encoding[0].encodedSpace.matrixSize.z
@@ -164,7 +164,7 @@ def send_imri_image(data, mrdHeader,connection,acq_data):
             # test casting # imagesOut.position[ii] = ctypes.c_float(imagesOut.position[ii] + position_offset[ii]) # added to test for imri
             imagesOut.position[ii] = imagesOut.position[ii] + position_offset[ii] # added to test for imri
         
-        #print(np.array(imagesOut.position)) # you will regret this
+        #eprint(np.array(imagesOut.position)) # you will regret this
         # -------------------------------------
 
 
@@ -214,101 +214,62 @@ def _parse_params(xml):
 def GriddingTCRGadget(connection):
     if (connection.header.subjectInformation is not None) and (connection.header.subjectInformation.patientID is not None):
         subj_str = connection.header.subjectInformation.patientID
-        print(subj_str)
+        eprint(subj_str)
     else:
         subj_str = connection.header.measurementInformation.measurementID.split("_")[1]
-        print(subj_str)
+        eprint(subj_str)
 
-    params = _parse_params(connection.config)
+    #params = _parse_params(connection.config)
+    params_init = parse_params(connection.config)
+    params={'n_tr_bin':int(216), ## GRIDDING parameters
+            'montage':False, ## MONTAGE parameters
+            'crop_percent': 0.6,
+            'num_slices':int(1),
+            'use_storage_server':False,
+            'alg_type':"gridding",
+            'niter':0, ## STCR Parameters
+            "lambdat":0, ## STCR Parameters
+            "lambdas":0, ## STCR Parameters
+            "n_rovir_coils":int(0),## ROVir Parameters
+            "recompute_dcf": False,## Analytical DCF
+            "recompute_L":False,
+            "time_per_frame_scale":0.7,
+            "max_frame_discard":int(6),
+            'storage_port':int(9112),
+            }
 
-    ## GRIDDING parameters
-    if "n_tr_bin" in params:
-        n_tr_bin = int(params['n_tr_bin'])
-    else:    
-        n_tr_bin = 216
-
-    ## MONTAGE parameters
-    if "montage" in params:
-        if params["montage"] == "True":
-            bool_montage = True
-        else:
-            bool_montage = False
-    else:
-        bool_montage = False
-    if "crop_percent" in params:
-        crop_percent = float(params["crop_percent"])
-    else:
-        crop_percent = 0.6
-    if "num_slices" in params:
-        n_slices_extract = int(params["num_slices"])
-    else:
-        n_slices_extract = 1
-    if "use_storage_server" in params:
-        if params["use_storage_server"] == 'True':
-            use_storage_server = True
-        else:
-            use_storage_server = False
-    else:
-        use_storage_server = False
-    if "alg_type" in params:
-        alg_type = params["alg_type"]
-    else:
-        alg_type = "gridding"
+    boolean_keys=['montage','use_storage_server','recompute_dcf','recompute_L']
+    str_keys=['alg_type']
+    int_keys=['n_tr_bin','num_slices','niter','n_rovir_coils','max_frame_discard','storage_port']
+    float_keys=['crop_percent','lambdat','lambdas',"time_per_frame_scale"]
+    #eprint(f"storage port {params['storage_port']} {type(params['storage_port'])}")
+    #eprint(f"storage port {params_init['storage_port']} {type(params_init['storage_port'])}")
+    params=read_params(params_init,params_ref=params,boolean_keys=boolean_keys,str_keys=str_keys,int_keys=int_keys,float_keys=float_keys)
+    #eprint(f"storage port {params['storage_port']} {type(params['storage_port'])}")
     
-    ## STCR Parameters
-    if "niter" in params:
-        niter = int(params["niter"])
-    else:
-        niter = 0
-    if "lambdat" in params:
-        lambdat = float(params["lambdat"]) 
-    else:
-        lambdat = 0
-    if "lambdas" in params:
-        lambdas = float(params["lambdas"]) 
-    else:
-        lambdas = 0
-    
-    ## ROVir Parameters
-    if "n_rovir_coils" in params:
-        n_rovir_coils = int(params["n_rovir_coils"])
-    else:
-        n_rovir_coils = 0
-    
-    ## Analytical DCF
-    if "recompute_dcf" in params:
-        if params["recompute_dcf"] == "True":
-            recompute_dcf = True
-        else:
-            recompute_dcf = False
-    else:
-        recompute_dcf = False
-    
-    if "recompute_L" in params:
-        if params["recompute_L"] == "True":
-            recompute_L = True
-        else:
-            recompute_L = False
-    else:
-        recompute_L = False
-    
-    if "time_per_frame_scale" in params:
-        time_per_frame_scale = float(params["time_per_frame_scale"])
-    else:
-        time_per_frame_scale = 0.7
-
-    if "max_frame_discard" in params:
-        MAX_FRAME_DISCARD = int(params["max_frame_discard"])
-    else:
-        MAX_FRAME_DISCARD = 6
-    
+    n_tr_bin = params['n_tr_bin']
+    bool_montage=params["montage"]
+    crop_percent = params["crop_percent"]
+    n_slices_extract =params["num_slices"]
+    use_storage_server=params["use_storage_server"]
+    alg_type = params["alg_type"]
+    niter = params["niter"]
+    lambdat = params["lambdat"] 
+    lambdas = params["lambdas"] 
+    n_rovir_coils=params["n_rovir_coils"]
+    recompute_dcf=params["recompute_dcf"]
+    recompute_L=params["recompute_L"]
+    time_per_frame_scale=params["time_per_frame_scale"]
+    MAX_FRAME_DISCARD=params["max_frame_discard"]
+    storage_port=int(params['storage_port'])
+    eprint(f"storage port {storage_port} {type(storage_port)}")
     # simply write frame_discard to a location for the SlicerGadget
     np.save("frame_discard.npy", np.array(MAX_FRAME_DISCARD))
     
     center_shift = 0
 
-    storage = Storage("localhost", 9112, subject=subj_str)
-    storage_vars = Storage("localhost", 9112)
+    storage = Storage("localhost", storage_port, subject=subj_str)
+    storage_vars = Storage("localhost", storage_port)
 
     # variable initializations
     L = None
@@ -333,7 +294,7 @@ def GriddingTCRGadget(connection):
         if n_tr_bin == 0:
             if data.is_flag_set(mrd.ACQ_LAST_IN_SLICE):
                 n_tr_bin = data.scan_counter
-                print(f"n_tr_bin: {n_tr_bin}")
+                eprint(f"n_tr_bin: {n_tr_bin}")
             else:
                 continue
 
@@ -342,7 +303,7 @@ def GriddingTCRGadget(connection):
             csm_loaded = True
             csm_str = f"{connection.header.encoding[0].encodedSpace.matrixSize.x}_{connection.header.encoding[0].encodedSpace.matrixSize.y}_{connection.header.encoding[0].encodedSpace.matrixSize.z}_{data._head.active_channels}"
 
-            print(f"CSM STR: {csm_str}")
+            eprint(f"CSM STR: {csm_str}")
 
             # PK HACK OF EPIC PROPORTIONS
             #csm_str = "112_112_48_21"
@@ -386,16 +347,16 @@ def GriddingTCRGadget(connection):
             # try to pull the pre-computed L
             L_scale_csm_scale_str = connection.header.measurementInformation.protocolName + "_len_" + str(n_tr_bin)
             try:
-                print(f"L_scale_csm: {L_scale_csm_scale_str}")
+                eprint(f"L_scale_csm: {L_scale_csm_scale_str}")
                 storage_scale_fetch = storage.fetch_latest(custom_tags={"scale_factor_python":L_scale_csm_scale_str})
                 L = storage_scale_fetch['L']
-                print(f"FETCHED CSM L: {L}")
+                eprint(f"FETCHED CSM L: {L}")
             except:
-                print("failed to fetch storage server. Will re-generate....")
+                eprint("failed to fetch storage server. Will re-generate....")
             if recompute_L:
                 L = None
 
-            print(f"TIME SPENT IN FIRST FRAME: {time.time() - st}")
+            eprint(f"TIME SPENT IN FIRST FRAME: {time.time() - st}")
          
         TR = connection.header.sequenceParameters.TR
         time_per_frame = n_tr_bin * TR[0]
@@ -419,7 +380,7 @@ def GriddingTCRGadget(connection):
             trajectory_frame = cp.array(trajectory_frame)
 
             if recompute_dcf and not recomputed_dcf:
-                print("recomputing the DCF...")
+                eprint("recomputing the DCF...")
                 dcf = analyticaldcf(trajectory_frame.get(), ns=nread)
                 dcf_sqrt = cp.sqrt(cp.array(dcf))
                 What = sp.linop.Multiply([csm.shape[0], nread], dcf_sqrt) 
@@ -441,12 +402,12 @@ def GriddingTCRGadget(connection):
             # precompute L if necessary
             if L is None:
                 L  = MaxEig(Aframe.N, max_iter=40, dtype=image.dtype, device=image.device, show_pbar=True).run()
-                print("Lipschitz Constant: {}".format(L))
+                eprint("Lipschitz Constant: {}".format(L))
                 n_frame_discard = MAX_FRAME_DISCARD 
                 was_lip_computed = True
                 storage.store({"L": L}, custom_tags={"scale_factor_python": L_scale_csm_scale_str})
             cp.cuda.stream.get_current_stream().synchronize()
-            print(f" time spent GRIDDING {time.time() - st}")
+            eprint(f" time spent GRIDDING {time.time() - st}")
 
             def cost_stcr(x):
                 return 0.5 * cp.square(cp.linalg.norm((Aframe * (x + xn_1) - y).flatten())) + \
@@ -478,7 +439,7 @@ def GriddingTCRGadget(connection):
                         xn = cg_alg.x
                     elif alg_type == "stcr":
                         del_0 = (image - xn_1) / 4 # soft initialization
-                        print(time_per_frame)
+                        eprint(time_per_frame)
                         del_0 = online_STCR_ISTA_2_timed(Aframe, G, xn_1, image, lamt, lams, 1/L, mu=0.1, yn=(kspace_buff.reshape(kspace_buff.shape[0], -1) * dcf_sqrt), time_recon=time_per_frame*time_per_frame_scale, deln=del_0)
                         xn = xn_1 + del_0
                     elif alg_type == "tcr":
@@ -495,12 +456,12 @@ def GriddingTCRGadget(connection):
                     elif alg_type == "gridding":
                         xn = image
                     
-                    print(f" ALG TYPE: {alg_type}")
+                    eprint(f" ALG TYPE: {alg_type}")
             else:
                 n_frame_discard = max(0, n_frame_discard-1)
                 xn = image
             
-            print(f" RECON MATRIX SIZE: {xn.shape}")
+            eprint(f" RECON MATRIX SIZE: {xn.shape}")
             # setup image out
             xn_1 = cp.copy(xn)
 
@@ -533,7 +494,7 @@ def GriddingTCRGadget(connection):
                         image_for_m = np.array(image_for_m)
                         image_for_m[:,:,compute_preemphasis_order(image_for_m.shape[0])]
                         image_m = montage(image_for_m) 
-                    print(f"{montage_info}")
+                    eprint(f"{montage_info}")
             else:
                 image_m = xn_1.get()
             
@@ -543,7 +504,7 @@ def GriddingTCRGadget(connection):
                 first_frame = False
             else:
                 if not image_m.shape == first_shape:
-                    print("resizing...")
+                    eprint("resizing...")
                     image_m = resize(image_m, first_shape) 
             
             # setup image and send.
@@ -556,7 +517,7 @@ def GriddingTCRGadget(connection):
                 pass
             #out_im = create_ismrmrd_image(np.abs(image_m), connection.header.encoding[0].encodedSpace.fieldOfView_mm, 0, data)
             cp.cuda.stream.get_current_stream().synchronize()
-            print(f"PYTHON TOTAL ELAPSED TIME: {time.time() - st}")
+            eprint(f"PYTHON TOTAL ELAPSED TIME: {time.time() - st}")
 
             if bool_montage:
                 out_im = create_ismrmrd_image(np.abs(image_m), connection.header.encoding[0].encodedSpace.fieldOfView_mm, 0, data)
@@ -564,7 +525,7 @@ def GriddingTCRGadget(connection):
             else:
                 # we could, instead of sending gridding images, just ignore them.
                 if n_images_sent > MAX_FRAME_DISCARD:
-                    print("send_imri_image called")
+                    eprint("send_imri_image called")
                     send_imri_image(image_m, connection.header,connection, data)
         else:
             n_connections = n_connections + 1

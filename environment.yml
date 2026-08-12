@@ -115,3 +115,4 @@ dependencies:
       - azure-storage-blob
       - azure-identity
       - matplotlib
+      - pyigtl
