@@ -1,0 +1,24 @@
+[
+  {
+    "file": "imoco_vds/noise_data.h5",
+    "sha256": "89396f6de4bf248aa9a37335ac086b73dd499773ec1f57c9aba83879b1cc144d",
+    "type": "noise",
+    "test": "imoco_vds"
+  },
+  {
+    "file": "imoco_vds/recon_data.h5",
+    "sha256": "4d1888c4714467cbc4a0f7ccb454275d10596ffcd64b003099fdf6e110e79abf",
+    "type": "input",
+    "test": "imoco_vds"
+  },
+  {
+    "file": "imoco_vds/baseline_output.h5",
+    "sha256": "a3080275eb0b509c917bf8398cad3a19cbff9f5ad5555e99cd2bf5ec4eec410d",
+    "type": "baseline",
+    "test": "imoco_vds",
+    "validated_by": "unknown",
+    "validated_date": "2026-03-19",
+    "git_sha": "d11d8915",
+    "recon_time_seconds": 386.0
+  }
+]
