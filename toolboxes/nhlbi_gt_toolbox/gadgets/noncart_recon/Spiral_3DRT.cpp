@@ -94,7 +94,7 @@ public:
         int selectedDevice = nhlbi_toolbox::utils::selectCudaDevice();
         unsigned int warp_size = cudaDeviceManager::Instance()->warp_size();
         size_t RO, E1, E2, CHA, N, S, SLC;
-        nhlbi_toolbox::utils::enable_peeraccess();
+        //nhlbi_toolbox::utils::enable_peeraccess();
 
         ISMRMRD::AcquisitionHeader acqhdr;
 

@@ -6,7 +6,7 @@ import time
 
 from typing import Tuple, Union
 import mrdhelper
-
+from utils_function import eprint
 
 def extract_middle_slices(array, n, dim, shift=0):
     """
@@ -191,7 +191,7 @@ def create_circular_mask(h, w, center=None, radius=None):
 # crop edges of the FOV
 def crop_FOV_edge(x, amt=1):
     if amt > 1:
-        print("AMT NEEDS TO BE LESS THAN 1")
+        eprint("AMT NEEDS TO BE LESS THAN 1")
         amt = 1
     x_fft = cp.fft.fftshift(cp.fft.fft2(x, axes=[0,1]), axes=[0,1])
     mask = create_circular_mask(x.shape[0], x.shape[1], radius=(x.shape[0]*amt/2))
@@ -212,7 +212,7 @@ def cg(Af, b, x0, niter=20, tol=1e-6):
     r = Af(x) - b
     p = cp.copy(r)
     for i in range(niter):
-        print(f"iter {i}")
+        eprint(f"iter {i}")
         Ap = Af(p)
         rsold = cp.sum(cp.square(cp.abs(r)))
         alpha = rsold / np.vdot(p, Ap) 
@@ -232,7 +232,7 @@ def FISTA_iteration(iter, xk_1, gradf, step_size, fista_dict=None, threshold=0, 
             'tk_1': 1
         }
     elif iter >= max_iter:
-        print("not iterating, max_iter reached")
+        eprint("not iterating, max_iter reached")
         return [xk_1, fista_dict]
     tk_1 = fista_dict['tk_1']
     yk_1 = fista_dict['yk_1']
@@ -252,7 +252,7 @@ def POGM_iteration(iter, xk_1, gradf, step_size, pogm_dict=None, threshold=0, ma
             'gammak_1': 1
         }
     elif iter >= max_iter:
-        print("not iterating, max_iter reached")
+        eprint("not iterating, max_iter reached")
         return [xk_1, pogm_dict]
     thetak_1 = pogm_dict['thetak_1']
     gammak_1 = pogm_dict['gammak_1']
@@ -332,7 +332,7 @@ def online_STCR_ISTA_timed(E, G, xn_1, Ahyn, lambdat, lambdas, step_size, mu=1 ,
             running = False
         
 
-    print(f"niter {niter}")
+    eprint(f"niter {niter}")
     if cost_fn is not None:
         return [deln, costs]
     return deln
@@ -429,12 +429,12 @@ def online_STCR_ISTA_2_timed(E, G, xn_1, Ahyn, lambdat, lambdas, step_size, mu=1
         
         cp.cuda.stream.get_current_stream().synchronize()
         elapsed = time.time() - start_time
-        print(elapsed)
+        eprint(elapsed)
 
         n_i = n_i + 1
         if elapsed*1000 > time_recon:
             running = False
-    print(n_i)
+    eprint(n_i)
     if cost_fn is not None:
         return [deln, costs]
     return deln
@@ -453,8 +453,8 @@ def crop_half_FOV(image, dims=(0,1), size=None):
         (w - size[1]) // 2
     ]
 
-    print(start_indices)
-    print(size)
+    eprint(start_indices)
+    eprint(size)
 
     # Create a slice object for each dimension
     slices = [slice(None) for i in range(len(image.shape))]
@@ -772,7 +772,7 @@ def gradient_descent_iteration_nesterov(iter, xk_1, gradf, step_size, nesterov_d
             'tk_1': 0
         }
     elif iter >= max_iter:
-        print("not iterating, max_iter reached")
+        eprint("not iterating, max_iter reached")
         return [xk_1, nesterov_dict]
     tk_1 = nesterov_dict['tk_1']
     yk_1 = nesterov_dict['yk_1']

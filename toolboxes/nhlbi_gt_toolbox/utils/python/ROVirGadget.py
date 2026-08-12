@@ -21,6 +21,7 @@ from sigpy.mri.app import EspiritCalib
 
 from skimage.morphology import convex_hull_image
 
+from utils_function import eprint, load_json, parse_params, read_params
 
 def automatic_mask_3D(image, threshold_ratio=0.1):
     """
@@ -351,7 +352,14 @@ def ROVirGadget(connection):
         subj_str = connection.header.subjectInformation.patientID
     else:
         subj_str = connection.header.measurementInformation.measurementID.split("_")[1]
-    storage = Storage("localhost", 9112, subject=subj_str)
+        
+    params_init = parse_params(connection.config)
+    params={'storage_port':9112,
+            }
+    int_keys=['storage_port']
+    
+    params=read_params(params_init,params_ref=params,int_keys=int_keys)
+    storage = Storage("localhost", params["storage_port"], subject=subj_str)
     
     setup = None
     bool_espirit = True
@@ -388,7 +396,7 @@ def ROVirGadget(connection):
                     csm_rovir = EspiritCalib(ksp, show_pbar=True, device=cp.cuda.Device(device=0)).run()
                 else:
                     for sl in range(rov_ims.shape[1]):
-                        print(f"{sl} out of ")
+                        eprint(f"{sl} out of ")
                         [csm_, rho] = calculate_csm_walsh_gpu(rov_ims[:,sl,:,:].squeeze())
                         csm_rovir[:,sl:sl+1,:,:] =  csm_
                     #storage.store({f"W":W, "csm_rovir": csm_rovir}, name=f"ROVIR_W_{size_path}")
