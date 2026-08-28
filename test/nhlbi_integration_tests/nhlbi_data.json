@@ -69,12 +69,12 @@
   },
   {
     "file": "3drt/baseline_output.h5",
-    "sha256": "04e6d61654c5040e9589cb1ef02019e445990ef72c4381e151f2342e95ba4542",
+    "sha256": "130da444d2d368a9f679191d28932a8f023ff684f5dd6319f1d4a06d9600977a",
     "type": "baseline",
     "test": "3drt",
     "validated_by": "unknown",
-    "validated_date": "2026-08-12",
-    "git_sha": "1e6e62a",
+    "validated_date": "2026-08-28",
+    "git_sha": "87e65a6",
     "recon_time_seconds": 42.3
   }
 ]

@@ -205,7 +205,7 @@ class Storage:
                 n_discard = (num_dims+1) # discard 2x amount because in64 and float32 mismatch.
                 np_data = np.frombuffer(data, dtype='<f4')[(n_discard*2):]
                 # check if it is complex.
-                if np.product(np.array(dims))*2 == np_data.shape[0]:
+                if np.prod(np.array(dims))*2 == np_data.shape[0]:
                     np_data = np_data.reshape(-1, 2)
                     np_data = np_data[:,0] + 1j * np_data[:, 1]
                 return np_data.reshape(np.flip(dims))
